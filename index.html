@@ -8,8 +8,23 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+    <script>
+      // Prevent browser extension injection conflicts (such as web3/ethereum provider redefinition) from breaking runtime execution
+      window.addEventListener('error', function(event) {
+        if (event && event.message && (event.message.includes('ethereum') || event.message.includes('Cannot redefine property'))) {
+          event.stopImmediatePropagation();
+          event.preventDefault();
+        }
+      }, true);
+      window.addEventListener('unhandledrejection', function(event) {
+        if (event && event.reason && String(event.reason).includes('ethereum')) {
+          event.stopImmediatePropagation();
+          event.preventDefault();
+        }
+      }, true);
+    </script>
   </head>
-  <body class="bg-[#1B1305] text-[#F2E9D8] antialiased selection:bg-[#E8A317] selection:text-[#1B1305]">
+  <body class="bg-[#F1F5F9] text-slate-800 antialiased selection:bg-indigo-600 selection:text-white">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
