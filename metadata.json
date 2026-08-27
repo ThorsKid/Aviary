@@ -1,0 +1,6 @@
+{
+  "name": "ApiaryOps",
+  "description": "Beekeeping operations tracker for managing hives, queen banks, inspections, splits, and sales.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
