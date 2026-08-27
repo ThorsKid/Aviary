@@ -49,20 +49,19 @@ export const HexagonTile: React.FC<HexagonTileProps> = ({
   let tone: StatusTone = 'good';
   let badgeText = '';
 
-  if (hive.status === 'sold') {
+  const statusNorm = hive.status?.toLowerCase() || '';
+
+  if (statusNorm === 'sold') {
     tone = 'dim';
     badgeText = 'SOLD';
-  } else if (hive.status === 'merged') {
-    tone = 'dim';
-    badgeText = 'MERGED';
-  } else if (hive.status === 'dead') {
-    tone = 'bad';
-    badgeText = 'DEAD';
-  } else if (hive.status === 'queenless') {
+  } else if (statusNorm === 'queenless') {
     tone = 'bad';
     badgeText = 'NO QUEEN';
-  } else if (daysSinceInspection >= 999999) {
+  } else if (statusNorm === 'undetermined') {
     tone = 'warn';
+    badgeText = 'UNDET';
+  } else if (daysSinceInspection >= 999999) {
+    tone = 'neutral';
     badgeText = 'NEW';
   } else if (daysSinceInspection > 7) {
     tone = 'warn';

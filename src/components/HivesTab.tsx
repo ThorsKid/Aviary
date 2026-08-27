@@ -56,8 +56,8 @@ export const HivesTab: React.FC<HivesTabProps> = ({
     number: '',
     location: '',
     date_established: today(),
-    source: 'package' as HiveSource,
-    status: 'active' as HiveStatus,
+    source: 'Nuc' as HiveSource,
+    status: 'Queen Right' as HiveStatus,
     queen_id: '',
     notes: '',
   });
@@ -97,8 +97,8 @@ export const HivesTab: React.FC<HivesTabProps> = ({
       number: '',
       location: '',
       date_established: today(),
-      source: 'package',
-      status: 'active',
+      source: 'Nuc',
+      status: 'Queen Right',
       queen_id: '',
       notes: '',
     });
@@ -169,7 +169,7 @@ export const HivesTab: React.FC<HivesTabProps> = ({
             Hives & Colonies
           </h2>
           <p className="text-xs font-mono text-slate-500 mt-1">
-            {hives.length} total · {hives.filter((h) => h.status === 'active').length} active production colonies
+            {hives.length} total · {hives.filter((h) => h.status === 'Queen Right').length} Queen Right colonies
           </p>
         </div>
 
@@ -242,21 +242,15 @@ export const HivesTab: React.FC<HivesTabProps> = ({
                 filteredHives.map((h) => {
                   const q = queenLookup[h.queen_id];
                   const days = daysAgo(lastInspectionMap[h.id]);
-                  const isOverdue = days > 7 && h.status === 'active';
+                  const isOverdue = days > 7 && h.status !== 'Sold';
 
                   const getStatusTone = (st: HiveStatus) => {
-                    switch (st) {
-                      case 'active':
-                        return 'good';
-                      case 'queenless':
-                      case 'dead':
-                        return 'bad';
-                      case 'sold':
-                      case 'merged':
-                        return 'dim';
-                      default:
-                        return 'neutral';
-                    }
+                    const norm = st?.toLowerCase() || '';
+                    if (norm === 'queen right') return 'good';
+                    if (norm === 'queenless') return 'bad';
+                    if (norm === 'undetermined') return 'warn';
+                    if (norm === 'sold') return 'dim';
+                    return 'neutral';
                   };
 
                   return (

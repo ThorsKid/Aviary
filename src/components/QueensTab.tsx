@@ -19,6 +19,11 @@ import {
   Calendar,
   Layers,
   Sparkles,
+  Home,
+  Tag,
+  Dna,
+  Clock,
+  Box,
 } from 'lucide-react';
 
 interface QueensTabProps {
@@ -55,6 +60,10 @@ export const QueensTab: React.FC<QueensTabProps> = ({
     hive_id: '',
     date_introduced: today(),
     notes: '',
+    is_holding: false,
+    lineage: '',
+    age: '',
+    mated_nuc_number: '',
   });
 
   const filteredQueens = queens.filter((q) => {
@@ -63,29 +72,36 @@ export const QueensTab: React.FC<QueensTabProps> = ({
     const hive = hiveLookup[q.hive_id];
     return (
       q.label.toLowerCase().includes(term) ||
-      q.breed.toLowerCase().includes(term) ||
-      q.origin.toLowerCase().includes(term) ||
-      q.notes.toLowerCase().includes(term) ||
+      (q.breed && q.breed.toLowerCase().includes(term)) ||
+      (q.origin && q.origin.toLowerCase().includes(term)) ||
+      (q.notes && q.notes.toLowerCase().includes(term)) ||
+      (q.lineage && q.lineage.toLowerCase().includes(term)) ||
+      (q.mated_nuc_number && q.mated_nuc_number.toLowerCase().includes(term)) ||
       (hive && hive.number.toLowerCase().includes(term))
     );
   });
 
-  const inHiveQueens = filteredQueens.filter((q) => q.status === 'in-hive');
-  const spareQueens = filteredQueens.filter((q) => q.status === 'spare');
+  const holdingQueens = filteredQueens.filter((q) => q.is_holding || q.status === 'mated-holding');
+  const inHiveQueens = filteredQueens.filter((q) => !q.is_holding && q.status === 'in-hive');
+  const spareQueens = filteredQueens.filter((q) => !q.is_holding && q.status === 'spare');
   const pastQueens = filteredQueens.filter(
-    (q) => q.status === 'sold' || q.status === 'dead'
+    (q) => !q.is_holding && (q.status === 'sold' || q.status === 'dead')
   );
 
-  const handleOpenAdd = () => {
+  const handleOpenAdd = (defaultIsHolding = false) => {
     setEditingQueen(null);
     setFormData({
       label: '',
       origin: 'raised',
       breed: '',
-      status: 'spare',
+      status: defaultIsHolding ? 'mated-holding' : 'spare',
       hive_id: '',
       date_introduced: today(),
       notes: '',
+      is_holding: defaultIsHolding,
+      lineage: '',
+      age: 'Current Season (Mated)',
+      mated_nuc_number: defaultIsHolding ? 'Mating Nuc #' : '',
     });
     setIsModalOpen(true);
   };
@@ -100,6 +116,10 @@ export const QueensTab: React.FC<QueensTabProps> = ({
       hive_id: q.hive_id || '',
       date_introduced: q.date_introduced || today(),
       notes: q.notes || '',
+      is_holding: Boolean(q.is_holding || q.status === 'mated-holding'),
+      lineage: q.lineage || '',
+      age: q.age || '',
+      mated_nuc_number: q.mated_nuc_number || '',
     });
     setIsModalOpen(true);
   };
@@ -114,15 +134,21 @@ export const QueensTab: React.FC<QueensTabProps> = ({
     e.preventDefault();
     if (!formData.label.trim()) return;
 
+    const isHolding = Boolean(formData.is_holding || formData.status === 'mated-holding');
+
     const updated: Queen = {
       id: editingQueen ? editingQueen.id : uid(),
       label: formData.label.trim(),
       origin: formData.origin,
       breed: formData.breed.trim(),
-      status: formData.status,
-      hive_id: formData.status === 'in-hive' ? formData.hive_id : '',
+      status: isHolding ? 'mated-holding' : formData.status,
+      hive_id: formData.status === 'in-hive' && !isHolding ? formData.hive_id : '',
       date_introduced: formData.date_introduced,
       notes: formData.notes.trim(),
+      is_holding: isHolding,
+      lineage: formData.lineage.trim(),
+      age: formData.age.trim(),
+      mated_nuc_number: formData.mated_nuc_number.trim(),
     };
 
     onSaveQueen(updated);
@@ -131,7 +157,10 @@ export const QueensTab: React.FC<QueensTabProps> = ({
 
   const renderQueenCard = (q: Queen) => {
     const hive = hiveLookup[q.hive_id];
+    const isHolding = Boolean(q.is_holding || q.status === 'mated-holding');
+
     const getTone = (st: QueenStatus) => {
+      if (isHolding) return 'good';
       switch (st) {
         case 'in-hive':
           return 'good';
@@ -148,13 +177,19 @@ export const QueensTab: React.FC<QueensTabProps> = ({
     return (
       <div
         key={q.id}
-        className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs hover:border-slate-300 transition-colors"
+        className={`p-4 rounded-xl bg-white border shadow-xs hover:border-slate-300 transition-colors ${
+          isHolding
+            ? 'border-indigo-200 ring-1 ring-indigo-100 bg-linear-to-b from-white to-indigo-50/20'
+            : 'border-slate-200'
+        }`}
       >
         <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-100">
           <div className="flex items-center gap-2">
             <Crown
               className={`w-4 h-4 ${
-                q.status === 'in-hive'
+                isHolding
+                  ? 'text-indigo-600'
+                  : q.status === 'in-hive'
                   ? 'text-amber-500'
                   : q.status === 'spare'
                   ? 'text-sky-500'
@@ -191,9 +226,13 @@ export const QueensTab: React.FC<QueensTabProps> = ({
 
         {/* Chips */}
         <div className="flex items-center gap-2 pt-3 flex-wrap">
-          <StatusChip label={q.status} tone={getTone(q.status)} size="sm" />
+          {isHolding ? (
+            <StatusChip label="Mated Holding Nuc" tone="good" size="sm" />
+          ) : (
+            <StatusChip label={q.status} tone={getTone(q.status)} size="sm" />
+          )}
           <StatusChip label={`Origin: ${q.origin}`} tone="dim" size="sm" />
-          {q.status === 'in-hive' && hive && (
+          {!isHolding && q.status === 'in-hive' && hive && (
             <StatusChip label={`Colony: ${hive.number}`} tone="warn" size="sm" />
           )}
           {q.date_introduced && (
@@ -202,6 +241,35 @@ export const QueensTab: React.FC<QueensTabProps> = ({
             </span>
           )}
         </div>
+
+        {/* Rearing / Holding Metadata Box */}
+        {isHolding && (
+          <div className="mt-3 p-2.5 rounded-lg bg-indigo-50/60 border border-indigo-100 text-xs space-y-1.5 font-mono">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-indigo-950">
+              {q.mated_nuc_number && (
+                <div className="flex items-center gap-1">
+                  <Box className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                  <span className="text-slate-500 text-[10px]">NUC:</span>
+                  <strong className="font-semibold text-indigo-900">{q.mated_nuc_number}</strong>
+                </div>
+              )}
+              {q.age && (
+                <div className="flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                  <span className="text-slate-500 text-[10px]">AGE:</span>
+                  <strong className="font-semibold text-indigo-900">{q.age}</strong>
+                </div>
+              )}
+              {q.lineage && (
+                <div className="flex items-center gap-1 sm:col-span-3">
+                  <Dna className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                  <span className="text-slate-500 text-[10px]">LINEAGE:</span>
+                  <strong className="font-semibold text-indigo-900">{q.lineage}</strong>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {q.notes && (
           <p className="mt-2.5 text-xs text-slate-700 italic bg-slate-50 p-2.5 rounded-lg border border-slate-200 leading-relaxed">
@@ -218,23 +286,70 @@ export const QueensTab: React.FC<QueensTabProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="font-display font-bold text-2xl text-slate-900 tracking-tight">
-            Queen Stock &amp; Bank
+            Queen Stock &amp; Queen Rearing Bank
           </h2>
           <p className="text-xs font-mono text-slate-500 mt-1">
-            {queens.length} queen records ({inHiveQueens.length} in production hives,{' '}
-            {spareQueens.length} in spare bank)
+            {queens.length} registered queens · {holdingQueens.length} holding in mating nucs · {inHiveQueens.length} active in production hives
           </p>
         </div>
 
         {isAdmin && (
-          <button
-            onClick={handleOpenAdd}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-semibold py-2.5 px-4 rounded-lg shadow-sm font-mono uppercase tracking-wider transition-all cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            + Add Queen
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleOpenAdd(true)}
+              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-semibold py-2.5 px-3.5 rounded-lg shadow-sm font-mono uppercase tracking-wider transition-all cursor-pointer"
+            >
+              <Box className="w-4 h-4" />
+              + Mated Holding Nuc
+            </button>
+            <button
+              onClick={() => handleOpenAdd(false)}
+              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-semibold py-2.5 px-3.5 rounded-lg shadow-sm font-mono uppercase tracking-wider transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              + Add Queen
+            </button>
+          </div>
         )}
+      </div>
+
+      {/* Metrics Row */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between">
+          <span className="text-[11px] font-mono uppercase tracking-wider text-slate-500">
+            Total Queens
+          </span>
+          <span className="font-display text-xl font-bold text-slate-900 mt-2">
+            {queens.length}
+          </span>
+        </div>
+
+        <div className="p-3.5 rounded-xl bg-white border border-indigo-200 shadow-xs flex flex-col justify-between bg-indigo-50/30">
+          <span className="text-[11px] font-mono uppercase tracking-wider text-indigo-700 font-semibold">
+            Mated Queen Holding
+          </span>
+          <span className="font-display text-xl font-bold text-indigo-600 mt-2">
+            {holdingQueens.length} nucs
+          </span>
+        </div>
+
+        <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between">
+          <span className="text-[11px] font-mono uppercase tracking-wider text-slate-500">
+            In Active Colonies
+          </span>
+          <span className="font-display text-xl font-bold text-emerald-600 mt-2">
+            {inHiveQueens.length} hives
+          </span>
+        </div>
+
+        <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between">
+          <span className="text-[11px] font-mono uppercase tracking-wider text-slate-500">
+            Spare Stock / Sold
+          </span>
+          <span className="font-display text-xl font-bold text-slate-600 mt-2">
+            {spareQueens.length} spare / {pastQueens.length} hist
+          </span>
+        </div>
       </div>
 
       {/* Search */}
@@ -243,7 +358,7 @@ export const QueensTab: React.FC<QueensTabProps> = ({
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
           <input
             type="text"
-            placeholder="Search queens by label, breed, notes..."
+            placeholder="Search lineage, nuc #, breed, label..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:bg-white rounded-lg pl-9 pr-3.5 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 outline-none font-mono transition-colors"
@@ -251,11 +366,39 @@ export const QueensTab: React.FC<QueensTabProps> = ({
         </div>
       </div>
 
-      {/* Group 1: In Hives */}
+      {/* Group 1: Mated Queen Holding Section (Queen Rearing) */}
       <div className="space-y-3">
-        <div className="flex items-center gap-2 text-xs font-mono uppercase font-semibold text-indigo-600 tracking-wider">
-          <Crown className="w-4 h-4" />
-          <span>In Production Hives ({inHiveQueens.length})</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-xs font-mono uppercase font-bold text-indigo-700 tracking-wider">
+            <Box className="w-4 h-4 text-indigo-600" />
+            <span>Mated Queen Holding Section (Queen Rearing) · {holdingQueens.length}</span>
+          </div>
+          {isAdmin && (
+            <button
+              onClick={() => handleOpenAdd(true)}
+              className="text-xs text-indigo-600 hover:underline font-mono cursor-pointer"
+            >
+              + Add Holding Queen
+            </button>
+          )}
+        </div>
+
+        {holdingQueens.length === 0 ? (
+          <div className="p-6 rounded-xl bg-white border border-slate-200 text-center text-xs text-slate-400 font-mono shadow-xs">
+            No mated queens currently in rearing holding nucs.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {holdingQueens.map(renderQueenCard)}
+          </div>
+        )}
+      </div>
+
+      {/* Group 2: In Hives */}
+      <div className="space-y-3 pt-2">
+        <div className="flex items-center gap-2 text-xs font-mono uppercase font-semibold text-emerald-700 tracking-wider">
+          <Crown className="w-4 h-4 text-emerald-600" />
+          <span>Active in Production Hives ({inHiveQueens.length})</span>
         </div>
         {inHiveQueens.length === 0 ? (
           <div className="p-6 rounded-xl bg-white border border-slate-200 text-center text-xs text-slate-400 font-mono shadow-xs">
@@ -268,7 +411,7 @@ export const QueensTab: React.FC<QueensTabProps> = ({
         )}
       </div>
 
-      {/* Group 2: Spare Queen Bank */}
+      {/* Group 3: Spare Queen Bank */}
       <div className="space-y-3 pt-2">
         <div className="flex items-center gap-2 text-xs font-mono uppercase font-semibold text-sky-600 tracking-wider">
           <Layers className="w-4 h-4" />
@@ -285,7 +428,7 @@ export const QueensTab: React.FC<QueensTabProps> = ({
         )}
       </div>
 
-      {/* Group 3: Sold or Deceased */}
+      {/* Group 4: Sold or Deceased */}
       {pastQueens.length > 0 && (
         <div className="space-y-3 pt-2">
           <div className="flex items-center gap-2 text-xs font-mono uppercase font-semibold text-slate-500 tracking-wider">
@@ -302,11 +445,36 @@ export const QueensTab: React.FC<QueensTabProps> = ({
         <Modal
           isOpen={true}
           onClose={() => setIsModalOpen(false)}
-          title={editingQueen ? `Edit Queen ${editingQueen.label}` : 'Add New Queen to Stock'}
-          subtitle="Record genetics, origin, colony assignment, and marking notes"
+          title={editingQueen ? `Edit Queen ${editingQueen.label}` : 'Add Queen / Holding Nuc'}
+          subtitle="Record genetics, queen rearing holding status, lineage, age, and nuc placement"
           maxWidth="md"
         >
           <form onSubmit={handleFormSubmit} className="space-y-4 text-xs">
+            {/* Queen Rearing Mated Holding Toggle */}
+            <div className="p-3 rounded-lg bg-indigo-50/70 border border-indigo-200 space-y-2">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={formData.is_holding}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      is_holding: e.target.checked,
+                      status: e.target.checked ? 'mated-holding' : formData.status,
+                    })
+                  }
+                  className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-indigo-300 cursor-pointer"
+                />
+                <span className="font-mono font-bold text-indigo-900 uppercase tracking-wider text-xs flex items-center gap-1.5">
+                  <Box className="w-4 h-4 text-indigo-600" />
+                  Mated Queen Holding Section (Queen Rearing)
+                </span>
+              </label>
+              <p className="text-[11px] text-indigo-800/80 font-mono">
+                Check this if the queen is mated and currently held in a mating nuc or holding bank.
+              </p>
+            </div>
+
             <div>
               <label className="block font-mono font-medium text-slate-700 uppercase tracking-wider mb-1">
                 Queen Label / Markings *
@@ -320,6 +488,56 @@ export const QueensTab: React.FC<QueensTabProps> = ({
                 required
               />
             </div>
+
+            {/* Mated Queen Holding Specific Fields */}
+            {formData.is_holding ? (
+              <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-mono font-medium text-slate-700 uppercase tracking-wider mb-1">
+                      Mated Nuc Number *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.mated_nuc_number}
+                      onChange={(e) =>
+                        setFormData({ ...formData, mated_nuc_number: e.target.value })
+                      }
+                      placeholder="e.g. Nuc-04 (Mating Yard A)"
+                      className="w-full bg-white border border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-slate-900 outline-none font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-mono font-medium text-slate-700 uppercase tracking-wider mb-1">
+                      Queen Age / Emergence Date
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.age}
+                      onChange={(e) => setFormData({ ...formData, age: e.target.value })}
+                      placeholder="e.g. 2024 Summer (3 weeks)"
+                      className="w-full bg-white border border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-slate-900 outline-none font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-mono font-medium text-slate-700 uppercase tracking-wider mb-1">
+                    Queen Lineage &amp; Genetics
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.lineage}
+                    onChange={(e) =>
+                      setFormData({ ...formData, lineage: e.target.value })
+                    }
+                    placeholder="e.g. VSH Italian Mother Line x Survivor Drone Station"
+                    className="w-full bg-white border border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-slate-900 outline-none"
+                  />
+                </div>
+              </div>
+            ) : null}
 
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -355,42 +573,44 @@ export const QueensTab: React.FC<QueensTabProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block font-mono font-medium text-slate-700 uppercase tracking-wider mb-1">
-                  Status
-                </label>
-                <select
-                  value={formData.status}
-                  onChange={(e) =>
-                    setFormData({ ...formData, status: e.target.value as QueenStatus })
-                  }
-                  className="w-full bg-white border border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-slate-900 outline-none capitalize"
-                >
-                  {QUEEN_STATUS_OPTIONS.map((st) => (
-                    <option key={st} value={st}>
-                      {st}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            {!formData.is_holding && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-mono font-medium text-slate-700 uppercase tracking-wider mb-1">
+                    Status
+                  </label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) =>
+                      setFormData({ ...formData, status: e.target.value as QueenStatus })
+                    }
+                    className="w-full bg-white border border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-slate-900 outline-none capitalize"
+                  >
+                    {QUEEN_STATUS_OPTIONS.map((st) => (
+                      <option key={st} value={st}>
+                        {st}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              <div>
-                <label className="block font-mono font-medium text-slate-700 uppercase tracking-wider mb-1">
-                  Date Introduced
-                </label>
-                <input
-                  type="date"
-                  value={formData.date_introduced}
-                  onChange={(e) =>
-                    setFormData({ ...formData, date_introduced: e.target.value })
-                  }
-                  className="w-full bg-white border border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-slate-900 outline-none font-mono transition-colors"
-                />
+                <div>
+                  <label className="block font-mono font-medium text-slate-700 uppercase tracking-wider mb-1">
+                    Date Introduced
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.date_introduced}
+                    onChange={(e) =>
+                      setFormData({ ...formData, date_introduced: e.target.value })
+                    }
+                    className="w-full bg-white border border-slate-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-slate-900 outline-none font-mono transition-colors"
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
-            {formData.status === 'in-hive' && (
+            {!formData.is_holding && formData.status === 'in-hive' && (
               <div>
                 <label className="block font-mono font-medium text-slate-700 uppercase tracking-wider mb-1">
                   Assign To Hive Colony

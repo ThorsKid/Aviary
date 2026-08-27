@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Account,
   Hive,
+  HiveStatus,
   Queen,
   Inspection,
   Split,
@@ -73,7 +74,7 @@ export default function App() {
   }
 
   const activeHives = dbState.hives.filter(
-    (h) => h.status !== 'sold' && h.status !== 'merged' && h.status !== 'dead'
+    (h) => h.status !== 'Sold'
   );
   const urgentCount = activeHives.filter(
     (h) => daysAgo(lastInspectionMap[h.id]) > 7
@@ -114,18 +115,18 @@ export default function App() {
         : [...prev.inspections, insp];
 
       // Auto-flag hive status:
-      // If queen not seen and eggs not seen -> flag as queenless
-      // If queen seen on queenless hive -> flag as active
+      // If queen not seen and eggs not seen -> flag as Queenless
+      // If queen seen on queenless hive -> flag as Queen Right
       let updatedHives = [...prev.hives];
       const targetHive = updatedHives.find((h) => h.id === insp.hive_id);
       if (targetHive) {
-        if (!insp.queen_seen && !insp.eggs_seen && targetHive.status === 'active') {
+        if (!insp.queen_seen && !insp.eggs_seen && targetHive.status === 'Queen Right') {
           updatedHives = updatedHives.map((h) =>
-            h.id === insp.hive_id ? { ...h, status: 'queenless' as const } : h
+            h.id === insp.hive_id ? { ...h, status: 'Queenless' as HiveStatus } : h
           );
-        } else if (insp.queen_seen && targetHive.status === 'queenless') {
+        } else if (insp.queen_seen && targetHive.status === 'Queenless') {
           updatedHives = updatedHives.map((h) =>
-            h.id === insp.hive_id ? { ...h, status: 'active' as const } : h
+            h.id === insp.hive_id ? { ...h, status: 'Queen Right' as HiveStatus } : h
           );
         }
       }
@@ -161,7 +162,7 @@ export default function App() {
             return {
               ...h,
               queen_id: queen.id,
-              status: h.status === 'queenless' ? ('active' as const) : h.status,
+              status: (h.status === 'Queenless' ? 'Queen Right' : h.status) as HiveStatus,
             };
           }
           return h;
@@ -204,8 +205,8 @@ export default function App() {
           number: split.new_hive_number.trim(),
           location: parentHive ? parentHive.location : '',
           date_established: split.date,
-          source: 'split',
-          status: 'active',
+          source: 'Split',
+          status: 'Queen Right',
           queen_id: '',
           notes: `Created from split of ${parentHive ? parentHive.number : 'colony'}.`,
         };

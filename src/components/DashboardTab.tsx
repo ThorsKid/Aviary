@@ -71,14 +71,14 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
 
   // Computed metrics
   const activeHives = hives.filter(
-    (h) => h.status !== 'sold' && h.status !== 'merged' && h.status !== 'dead'
+    (h) => h.status !== 'Sold'
   );
 
   const needsInspection = activeHives.filter(
     (h) => daysAgo(lastInspectionMap[h.id]) > 7
   );
 
-  const queenlessHives = hives.filter((h) => h.status === 'queenless');
+  const queenlessHives = hives.filter((h) => h.status === 'Queenless');
   const spareQueens = queens.filter((q) => q.status === 'spare');
 
   const splitsRevenue = splits.reduce(
